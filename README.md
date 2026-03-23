@@ -9,8 +9,20 @@ A FastAPI-based REST API for managing gaming statistics with MySQL database.
 - RESTful API endpoints
 - MySQL database integration
 - Built with FastAPI, Pydantic, and SQLAlchemy
+- 🐳 **Docker & Docker Compose support** - Run the entire stack with one command
+- 🚀 **Docker Hub integration** - Pre-built images available at `abrahamyan001/gaming-stats-api`
+- 🔄 **Multi-stage Docker build** - Optimized image size
+- 🏥 **Health checks** - Built-in container health monitoring
+- ⚡ **Hot reload** - Auto-restart on code changes during development
 
 ## Installation
+
+### Requirements
+- Python 3.8+
+- Docker (optional, for containerization)
+- Docker Compose (optional, for running with MySQL)
+
+### Local Setup
 
 1. Clone the repository
 2. Create and activate a virtual environment:
@@ -96,6 +108,51 @@ Copy `.env.example` to `.env` and customize values as needed:
 ```bash
 cp .env.example .env
 ```
+
+#### Docker Hub
+
+**Pull from Docker Hub:**
+```bash
+docker pull abrahamyan001/gaming-stats-api:latest
+docker run -p 8000:8000 \
+  -e DATABASE_URL="mysql+pymysql://user:password@host:3306/gaming_stats" \
+  abrahamyan001/gaming-stats-api:latest
+```
+
+**Build and Push to Docker Hub:**
+```bash
+# Build the image
+docker build -t abrahamyan001/gaming-stats-api:latest .
+
+# Login to Docker Hub
+docker login --username abrahamyan001
+
+# Push the image
+docker push abrahamyan001/gaming-stats-api:latest
+```
+
+**View on Docker Hub:**
+https://hub.docker.com/r/abrahamyan001/gaming-stats-api
+
+## Dependencies
+
+### Core Dependencies
+- **FastAPI** - Modern web framework for building APIs
+- **Uvicorn** - ASGI web server
+- **SQLAlchemy** - SQL toolkit and ORM
+- **Pydantic** - Data validation using Python type annotations
+- **PyMySQL** - Pure Python MySQL client
+- **cryptography** - Required for MySQL 8.0 authentication with caching_sha2_password
+
+### Development Dependencies
+- **pytest** - Testing framework
+- **httpx** - HTTP client for testing
+
+### Optional
+- **Docker** - For containerization
+- **Docker Compose** - For orchestrating multiple containers
+
+See `requirements.txt` for complete list with versions.
 
 ## API Endpoints
 
