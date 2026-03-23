@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import create_engine
 from contextlib import asynccontextmanager
 import os
+import time
+import logging
 from app.models import GameStats, GameStatsResponse, GameStatsDB, Base
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database setup
 DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://user:password@localhost/gaming_stats")
@@ -15,8 +21,26 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup
-    Base.metadata.create_all(bind=engine)
+    # Create tables on startup with retry logic
+    max_retries = 5
+    retry_count = 0
+    
+    while retry_count < max_retries:
+        try:
+            logger.info(f"Attempting to connect to database (attempt {retry_count + 1}/{max_retries})")
+            Base.metadata.create_all(bind=engine)
+            logger.info("Successfully connected to database and created tables")
+            break
+        except Exception as e:
+            retry_count += 1
+            logger.error(f"Database connection failed: {str(e)}")
+            if retry_count < max_retries:
+                logger.info(f"Retrying in 2 seconds...")
+                time.sleep(2)
+            else:
+                logger.error("Max retries reached. Database may not be available.")
+                raise
+    
     yield
     # Cleanup if needed
 
