@@ -1,9 +1,9 @@
 # Python >= 3.8 required
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
-pytest>=7.0.0
-httpx>=0.25.0
-PyMySQL>=1.0.0
-SQLAlchemy>=2.0.0
-cryptography>=41.0.0
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pytest==7.4.3
+httpx==0.25.2
+PyMySQL==1.1.0
+SQLAlchemy==2.0.23
+cryptography==41.0.7

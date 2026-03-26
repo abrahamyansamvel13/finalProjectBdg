@@ -22,7 +22,9 @@ services:
       - app-network
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.fast
     container_name: gaming_stats_api
     environment:
       DATABASE_URL: "mysql+pymysql://user:password@mysql:3306/gaming_stats"
