@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session, sessionmaker
@@ -45,6 +46,15 @@ async def lifespan(app: FastAPI):
     # Cleanup if needed
 
 app = FastAPI(title="Gaming Stats API", description="API for managing gaming statistics", version="0.1.0", lifespan=lifespan)
+
+# Enable CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()
