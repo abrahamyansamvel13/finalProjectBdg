@@ -4,13 +4,26 @@ Database Viewer Script
 Run this to inspect your database content
 """
 import os
+import sys
 from sqlalchemy import create_engine, text
+
+# Add app to path for imports
+sys.path.insert(0, os.path.dirname(__file__))
+
+from app.models import Base, GameStatsDB
 
 # Use test database for now (change to your MySQL URL when set up)
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///test.db')
 
 def view_database():
     engine = create_engine(DATABASE_URL, echo=False)
+    
+    # Create tables if they don't exist
+    print("=== Database Viewer ===")
+    print(f"Connected to: {DATABASE_URL}")
+    print("Creating tables if they don't exist...")
+    Base.metadata.create_all(bind=engine)
+    print("✓ Tables ready\n")
 
     print("=== Database Viewer ===")
     print(f"Connected to: {DATABASE_URL}")

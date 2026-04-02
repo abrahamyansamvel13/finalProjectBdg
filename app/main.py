@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import os
 import time
 import logging
-from app.models import GameStats, GameStatsResponse, GameStatsDB, Base
+from app.models import GameStats, GameStatsResponse, GameStatsDB, GameStatsUpdate, Base
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -99,3 +99,30 @@ async def get_stats_by_game(game_name: str, db: Session = Depends(get_db)):
     """Get all stats for a specific game"""
     stats = db.query(GameStatsDB).filter(GameStatsDB.game_name == game_name).all()
     return [GameStatsResponse(**stat.__dict__) for stat in stats]
+
+@app.put("/stats/{stats_id}", response_model=GameStatsResponse)
+async def update_stats(stats_id: int, stats: GameStatsUpdate, db: Session = Depends(get_db)):
+    """Update a gaming stats entry by ID (partial update allowed)"""
+    db_stat = db.query(GameStatsDB).filter(GameStatsDB.id == stats_id).first()
+    if not db_stat:
+        raise HTTPException(status_code=404, detail="Stats not found")
+    
+    # Update only provided fields
+    update_data = stats.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(db_stat, field, value)
+    
+    db.commit()
+    db.refresh(db_stat)
+    return GameStatsResponse(**db_stat.__dict__)
+
+@app.delete("/stats/{stats_id}")
+async def delete_stats(stats_id: int, db: Session = Depends(get_db)):
+    """Delete a gaming stats entry by ID"""
+    stat = db.query(GameStatsDB).filter(GameStatsDB.id == stats_id).first()
+    if not stat:
+        raise HTTPException(status_code=404, detail="Stats not found")
+    db.delete(stat)
+    db.commit()
+    return {"message": f"Stats entry {stats_id} deleted successfully"}
