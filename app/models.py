@@ -26,5 +26,14 @@ class GameStats(BaseModel):
     play_time_minutes: Optional[int] = None
     timestamp: Optional[datetime] = None
 
+class GameStatsUpdate(BaseModel):
+    """Model for partial updates - all fields are optional"""
+    game_name: Optional[str] = None
+    player_id: Optional[str] = None
+    score: Optional[int] = None
+    level: Optional[int] = None
+    play_time_minutes: Optional[int] = None
+    timestamp: Optional[datetime] = None
+
 class GameStatsResponse(GameStats):
     id: int
