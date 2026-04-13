@@ -1,11 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class GameStatsDB(Base):
     __tablename__ = "game_stats"
@@ -16,7 +18,12 @@ class GameStatsDB(Base):
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     play_time_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
 
 class GameStats(BaseModel):
     game_name: str
@@ -25,6 +32,7 @@ class GameStats(BaseModel):
     level: Optional[int] = None
     play_time_minutes: Optional[int] = None
     timestamp: Optional[datetime] = None
+
 
 class GameStatsUpdate(BaseModel):
     """Model for partial updates - all fields are optional"""
@@ -35,5 +43,7 @@ class GameStatsUpdate(BaseModel):
     play_time_minutes: Optional[int] = None
     timestamp: Optional[datetime] = None
 
+
 class GameStatsResponse(GameStats):
     id: int
+    model_config = ConfigDict(from_attributes=True)
