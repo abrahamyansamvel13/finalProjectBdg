@@ -164,3 +164,18 @@ fastapi-*.json
 
 # Uvicorn
 uvicorn-*.log
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+
+# SSH keys
+*.pem
+*.key
+
+# Docker override
+docker-compose.override.yml
+EOF
