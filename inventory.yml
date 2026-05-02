@@ -1,0 +1,17 @@
+all:
+  children:
+    backend:
+      hosts:
+        gaming_stats_api:
+          ansible_connection: docker
+          ansible_python_interpreter: /usr/local/bin/python3.11
+    database:
+      hosts:
+        gaming_stats_db:
+          ansible_connection: docker
+          ansible_python_interpreter: /usr/bin/python3
+    proxy:
+      hosts:
+        gaming_stats_nginx:
+          ansible_connection: docker
+          ansible_python_interpreter: /usr/bin/python3

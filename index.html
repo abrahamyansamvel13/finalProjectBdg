@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gaming Stats Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 0.95em;
+        }
+
+        input, select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger:hover {
+            background: #ff5252;
+        }
+
+        .btn-update {
+            background: #4ecdc4;
+            color: white;
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+
+        .btn-update:hover {
+            background: #44b3aa;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .stats-table th {
+            background: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .stats-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .stats-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .stats-table {
+                font-size: 0.9em;
+            }
+        }
+
+        .stats-count {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Gaming Stats Dashboard</h1>
+            <p>Manage your gaming achievements</p>
+        </header>
+
+        <div class="content">
+            <!-- Add/Update Form -->
+            <div class="section">
+                <h2>Add New Record</h2>
+                <div id="addMessage" class="message"></div>
+
+                <form id="addForm">
+                    <div class="form-group">
+                        <label for="gameName">Game Name *</label>
+                        <input type="text" id="gameName" placeholder="e.g., Chess Master" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="playerId">Player ID *</label>
+                        <input type="text" id="playerId" placeholder="e.g., john_doe_42" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="score">Score *</label>
+                        <input type="number" id="score" placeholder="e.g., 1250" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="level">Level (Optional)</label>
+                        <input type="number" id="level" placeholder="e.g., 5">
+                    </div>
+                    <div class="form-group">
+                        <label for="playTime">Play Time (minutes)</label>
+                        <input type="number" id="playTime" placeholder="e.g., 60">
+                    </div>
+                    <button type="submit" class="btn-primary">➕ Add Record</button>
+                </form>
+
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+
+                <h2>Update Record</h2>
+                <div id="updateMessage" class="message"></div>
+
+                <form id="updateForm">
+                    <div class="form-group">
+                        <label for="updateId">Record ID *</label>
+                        <input type="number" id="updateId" placeholder="Enter ID to update" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateGameName">Game Name</label>
+                        <input type="text" id="updateGameName" placeholder="Leave empty to keep current">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateScore">Score</label>
+                        <input type="number" id="updateScore" placeholder="Leave empty to keep current">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateLevel">Level</label>
+                        <input type="number" id="updateLevel" placeholder="Leave empty to keep current">
+                    </div>
+                    <div class="form-group">
+                        <label for="updatePlayTime">Play Time (minutes)</label>
+                        <input type="number" id="updatePlayTime" placeholder="Leave empty to keep current">
+                    </div>
+                    <button type="submit" class="btn-primary">⬆️ Update Record</button>
+                </form>
+            </div>
+
+            <!-- Stats Display -->
+            <div class="section">
+                <h2>All Records</h2>
+                <div id="statsMessage" class="message"></div>
+                <div id="statsCount" class="stats-count">Loading...</div>
+                <div id="statsContainer" class="loading">Loading records...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        // Load stats on page load
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        // Add form submission
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await addStats();
+        });
+
+        // Update form submission
+        document.getElementById('updateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await updateStats();
+        });
+
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const stats = await response.json();
+
+                const statsContainer = document.getElementById('statsContainer');
+                const statsCount = document.getElementById('statsCount');
+
+                if (stats.length === 0) {
+                    statsContainer.innerHTML = '<p style="text-align: center; color: #999;">No records found. Add one to get started!</p>';
+                    statsCount.textContent = 'Total Records: 0';
+                    return;
+                }
+
+                let html = `
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Game</th>
+                                <th>Player</th>
+                                <th>Score</th>
+                                <th>Level</th>
+                                <th>Time (min)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                stats.forEach(stat => {
+                    const timestamp = new Date(stat.timestamp).toLocaleString();
+                    html += `
+                        <tr title="Created: ${timestamp}">
+                            <td>${stat.id}</td>
+                            <td>${stat.game_name}</td>
+                            <td>${stat.player_id}</td>
+                            <td><strong>${stat.score}</strong></td>
+                            <td>${stat.level || '-'}</td>
+                            <td>${stat.play_time_minutes || '-'}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <button class="btn-danger" onclick="deleteStats(${stat.id})">🗑️</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                `;
+
+                statsContainer.innerHTML = html;
+                statsCount.textContent = `Total Records: ${stats.length}`;
+            } catch (error) {
+                document.getElementById('statsContainer').innerHTML = `<p style="color: red;">Error loading stats: ${error.message}</p>`;
+            }
+        }
+
+        async function addStats() {
+            const gameNameInput = document.getElementById('gameName');
+            const playerIdInput = document.getElementById('playerId');
+            const scoreInput = document.getElementById('score');
+            const levelInput = document.getElementById('level');
+            const playTimeInput = document.getElementById('playTime');
+            const addMessage = document.getElementById('addMessage');
+
+            const data = {
+                game_name: gameNameInput.value,
+                player_id: playerIdInput.value,
+                score: parseInt(scoreInput.value),
+                level: levelInput.value ? parseInt(levelInput.value) : null,
+                play_time_minutes: playTimeInput.value ? parseInt(playTimeInput.value) : null
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/stats`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) throw new Error('Failed to add record');
+
+                showMessage(addMessage, 'Record added successfully! ✓', 'success');
+                document.getElementById('addForm').reset();
+                loadStats();
+            } catch (error) {
+                showMessage(addMessage, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateStats() {
+            const updateId = document.getElementById('updateId').value;
+            const updateGameName = document.getElementById('updateGameName').value;
+            const updateScore = document.getElementById('updateScore').value;
+            const updateLevel = document.getElementById('updateLevel').value;
+            const updatePlayTime = document.getElementById('updatePlayTime').value;
+            const updateMessage = document.getElementById('updateMessage');
+
+            const data = {};
+            if (updateGameName) data.game_name = updateGameName;
+            if (updateScore) data.score = parseInt(updateScore);
+            if (updateLevel) data.level = parseInt(updateLevel);
+            if (updatePlayTime) data.play_time_minutes = parseInt(updatePlayTime);
+
+            if (Object.keys(data).length === 0) {
+                showMessage(updateMessage, 'Please enter at least one field to update', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/stats/${updateId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) throw new Error('Failed to update record');
+
+                showMessage(updateMessage, 'Record updated successfully! ✓', 'success');
+                document.getElementById('updateForm').reset();
+                loadStats();
+            } catch (error) {
+                showMessage(updateMessage, `Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function deleteStats(id) {
+            if (!confirm(`Delete record ${id}? This cannot be undone.`)) return;
+
+            try {
+                const response = await fetch(`${API_URL}/stats/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) throw new Error('Failed to delete record');
+
+                showMessage(document.getElementById('statsMessage'), 'Record deleted successfully! ✓', 'success');
+                loadStats();
+            } catch (error) {
+                showMessage(document.getElementById('statsMessage'), `Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showMessage(element, message, type) {
+            element.textContent = message;
+            element.className = `message ${type}`;
+            setTimeout(() => {
+                element.className = 'message';
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
