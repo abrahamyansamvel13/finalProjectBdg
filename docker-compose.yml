@@ -1,40 +1,15 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: gaming_stats_db
-    environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: gaming_stats
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 5s
-      retries: 5
-      interval: 10s
-    networks:
-      - app-network
-
   app:
     build:
       context: .
-      dockerfile: Dockerfile.fast
+      dockerfile: Dockerfile
     container_name: gaming_stats_api
-    environment:
-      DATABASE_URL: "mysql+pymysql://user:password@mysql:3306/gaming_stats"
+    env_file:
+      - .env
     expose:
       - "8000"
-    depends_on:
-      mysql:
-        condition: service_healthy
-    volumes:
-      - .:/app
     networks:
       - app-network
     restart: unless-stopped
@@ -60,7 +35,48 @@ services:
       interval: 10s
 
 volumes:
-  mysql_data:
+  nginx_logs:
+
+networks:
+  app-network:
+    driver: bridge
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gaming_stats_api
+    env_file:
+      - .env
+    expose:
+      - "8000"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: gaming_stats_nginx
+    ports:
+      - "80:80"
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      timeout: 5s
+      retries: 5
+      interval: 10s
+
+volumes:
   nginx_logs:
 
 networks:

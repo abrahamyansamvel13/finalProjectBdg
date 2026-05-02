@@ -171,3 +171,4 @@ fastapi-*.json
 uvicorn-*.log
 .terraform/
 *.tfstate
+terraform.tfvars
