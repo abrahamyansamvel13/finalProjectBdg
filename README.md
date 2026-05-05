@@ -1,450 +1,403 @@
 # Gaming Stats API
 
-A FastAPI-based REST API for managing gaming statistics with MySQL database.
+A production-grade REST API for tracking gaming statistics. Built with FastAPI and deployed on AWS with full Infrastructure as Code, auto-scaling, and zero single points of failure.
 
-## Features
+**Live URL:** `http://gaming-stats-alb-1824775883.eu-north-1.elb.amazonaws.com`
 
-- Create and retrieve gaming statistics
-- Filter stats by player or game
-- RESTful API endpoints
-- MySQL database integration
-- Built with FastAPI, Pydantic, and SQLAlchemy
-- 🐳 **Docker & Docker Compose support** - Run the entire stack with one command
-- 🚀 **Docker Hub integration** - Pre-built images available at `abrahamyan001/gaming-stats-api`
-- 🔄 **Optimized multi-stage Docker build** - Minimal image size with pinned dependencies
-- 🏥 **Health checks & service orchestration** - Built-in monitoring and proper startup sequencing
-- ⚡ **Hot reload** - Auto-restart on code changes during development
+---
 
-## Installation
+## ⚡ Quick Run Guide
 
-### Requirements
-- Python 3.8+
-- Docker (optional, for containerization)
-- Docker Compose (optional, for running with MySQL)
+Pick your scenario and copy-paste the commands.
 
-### Local Setup
-
-1. Clone the repository
-2. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Database Setup
-
-1. Install MySQL server on your system
-2. Create a database named `gaming_stats`
-3. Create a user with appropriate permissions
-4. Set the `DATABASE_URL` environment variable:
-   ```bash
-   export DATABASE_URL="mysql+pymysql://username:password@localhost/gaming_stats"
-   ```
-
-For development/testing, the app defaults to SQLite if no DATABASE_URL is set.
-
-## 🚀 Deployment Guide
-
-This guide covers how to run your Gaming Stats API project in different environments.
-
-### Quick Start (Recommended)
-
-The easiest way to run the project anywhere is using Docker:
-
+### Run locally (fastest, no Docker, no AWS)
 ```bash
-# Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/abrahamyansamvel13/finalProjectBdg.git
 cd finalProjectBdg
-
-# Run the automated setup script
-./setup.sh
-
-# Or manually start the entire stack (API + MySQL)
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f app
-
-# API will be available at http://localhost:8000
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+DATABASE_URL="sqlite:///./dev.db" uvicorn app.main:app --reload
+# open http://localhost:8000/docs
 ```
 
-**The `setup.sh` script will:**
-- Check Docker installation
-- Create environment file
-- Build and start all services
-- Wait for services to be ready
-- Provide access URLs and useful commands
-
-That's it! The application will be running with MySQL database.
-
-### Environment Setup Options
-
-#### Option 1: Docker (Any Environment)
-
-**Prerequisites:**
-- Docker installed
-- Docker Compose installed
-- 4GB+ RAM recommended
-
-**Steps:**
+### Run locally with Docker
 ```bash
-# 1. Clone and enter project
-git clone <your-repo-url>
+git clone https://github.com/abrahamyansamvel13/finalProjectBdg.git
 cd finalProjectBdg
-
-# 2. Copy environment file
-cp .env.example .env
-
-# 3. Start services
-docker-compose up -d
-
-# 4. Check status
-docker-compose ps
-
-# 5. View logs
-docker-compose logs -f app
+echo "DATABASE_URL=sqlite:///./dev.db" > .env
+docker compose up -d --build
+# open http://localhost/docs
 ```
 
-**Access Points:**
-- API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-- MySQL: localhost:3306 (user: user, password: password)
-
-#### Option 2: Local Development
-
-**Prerequisites:**
-- Python 3.8+
-- MySQL server (or use SQLite for testing)
-- Git
-
-**Steps:**
+### Deploy to AWS (production)
 ```bash
-# 1. Clone repository
-git clone <your-repo-url>
+cd terraform
+terraform init
+terraform apply          # enter your db_password when asked
+# open http://<alb_dns_name from output>
+```
+
+### Stop everything (save AWS costs)
+```bash
+aws ec2 stop-instances --instance-ids <id> --region eu-north-1
+aws rds stop-db-instance --db-instance-identifier gaming-stats-db --region eu-north-1
+```
+
+### Destroy all AWS resources
+```bash
+cd terraform && terraform destroy
+```
+
+---
+
+## Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | FastAPI, SQLAlchemy 2.0, Pydantic v2 |
+| Database | PostgreSQL 15 (AWS RDS) / SQLite (local dev) |
+| Server | Uvicorn + Nginx reverse proxy |
+| Containers | Docker, Docker Compose |
+| Infrastructure | Terraform (IaC) |
+| Cloud | AWS EC2, RDS, ALB, ASG, VPC, S3 |
+| Automation | Ansible |
+| Testing | pytest, httpx |
+
+---
+
+## Architecture
+
+```
+Internet
+    ↓
+Application Load Balancer (ALB)
+— distributes traffic across EC2 instances
+— health checks via /health endpoint
+    ↓               ↓
+EC2 #1           EC2 #2          ← Auto Scaling Group (min=2, max=4)
+eu-north-1a      eu-north-1b     ← Multi-AZ for high availability
+    ↓               ↓
+        RDS PostgreSQL
+        (private subnet, not accessible from internet)
+```
+
+**Key design decisions:**
+- ALB eliminates single point of failure — if one EC2 goes down, traffic automatically routes to the other
+- ASG automatically adds EC2 instances when CPU > 50%, removes them when load drops
+- RDS in private subnet — only reachable from app security group, never from internet
+- S3 remote state — Terraform state stored in S3 with DynamoDB locking for team safety
+
+---
+
+## Project Structure
+
+```
+finalProjectBdg/
+├── app/
+│   ├── main.py              # API routes
+│   ├── models.py            # SQLAlchemy + Pydantic models
+│   └── __init__.py
+├── tests/
+│   ├── test_main.py         # API tests (in-memory SQLite)
+│   └── __init__.py
+├── terraform/
+│   ├── main.tf              # All AWS infrastructure as code
+│   └── terraform.tfvars     # DB credentials (never commit this)
+├── terraform-backend/
+│   └── main.tf              # S3 bucket + DynamoDB for remote state
+├── index.html               # Frontend dashboard
+├── nginx.conf               # Reverse proxy config
+├── docker-compose.yml       # Local development stack
+├── Dockerfile               # App container build
+├── entrypoint.sh            # Container startup script
+├── inventory.yml            # Ansible hosts
+├── ansible-ping.sh          # Ansible infrastructure checks
+└── requirements.txt
+```
+
+---
+
+## Getting Started
+
+### Option 1 — Local Development (SQLite, no AWS needed)
+
+```bash
+git clone https://github.com/abrahamyansamvel13/finalProjectBdg.git
 cd finalProjectBdg
 
-# 2. Create virtual environment
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# 3. Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Set up database (choose one):
-# Option A: MySQL
-# Install MySQL and create database
-# Set DATABASE_URL=mysql+pymysql://user:pass@localhost/gaming_stats
+# Terminal 1 — start backend
+DATABASE_URL="sqlite:///./dev.db" uvicorn app.main:app --reload
 
-# Option B: SQLite (for testing)
-# No setup needed - app defaults to SQLite
-
-# 5. Run the application
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Terminal 2 — start frontend
+python3 -m http.server 9000
 ```
 
-#### Option 3: Cloud Deployment
+| Service | URL |
+|---------|-----|
+| Frontend dashboard | http://localhost:9000/index.html |
+| API | http://localhost:8000 |
+| Interactive API docs | http://localhost:8000/docs |
 
-##### Docker on Cloud VM (AWS EC2, DigitalOcean, etc.)
+### Option 2 — Docker (local, with .env file)
+
+Create a `.env` file first:
+```bash
+echo "DATABASE_URL=sqlite:///./dev.db" > .env
+```
+
+Then run:
+```bash
+docker compose up -d --build
+```
+
+| Service | URL |
+|---------|-----|
+| API via Nginx | http://localhost |
+| API docs | http://localhost/docs |
+| Health check | http://localhost/health |
+
+### Option 3 — AWS (production)
+
+See the [Infrastructure](#infrastructure) section below.
+
+---
+
+## API Reference
+
+### Endpoints
+
+| Method | Endpoint | Description | Status Code |
+|--------|----------|-------------|-------------|
+| GET | `/health` | Health check | 200 |
+| GET | `/stats` | Get all records | 200 |
+| POST | `/stats` | Create a record | 201 |
+| GET | `/stats/{id}` | Get record by ID | 200 / 404 |
+| PUT | `/stats/{id}` | Partial update | 200 / 404 |
+| DELETE | `/stats/{id}` | Delete record | 200 / 404 |
+| GET | `/stats/player/{player_id}` | All records for a player | 200 |
+| GET | `/stats/game/{game_name}` | All records for a game | 200 |
+
+> **Note:** Routes `/stats/player/` and `/stats/game/` are declared **before** `/stats/{id}` in the code — this is intentional to prevent FastAPI from treating "player" or "game" as an integer ID.
+
+### Data Model
+
+```json
+{
+  "game_name": "Chess",
+  "player_id": "player123",
+  "score": 1500,
+  "level": 10,
+  "play_time_minutes": 45,
+  "timestamp": "2026-04-10T13:00:00Z"
+}
+```
+
+`level`, `play_time_minutes`, and `timestamp` are optional. For PUT requests, all fields are optional — only send what you want to update.
+
+### Examples
 
 ```bash
-# 1. SSH into your VM
-ssh user@your-server
+# Health check
+curl http://localhost/health
 
-# 2. Install Docker and Docker Compose
-sudo apt update
-sudo apt install docker.io docker-compose
-sudo systemctl start docker
-sudo usermod -aG docker $USER
+# Create a record
+curl -X POST http://localhost/stats \
+  -H "Content-Type: application/json" \
+  -d '{"game_name": "Chess", "player_id": "player123", "score": 1500, "level": 10}'
 
-# 3. Clone and run
-git clone <your-repo-url>
-cd finalProjectBdg
-docker-compose up -d
+# Get all records for a player
+curl http://localhost/stats/player/player123
 
-# 4. Open firewall port 8000
-sudo ufw allow 8000
+# Get all records for a game
+curl http://localhost/stats/game/Chess
+
+# Partial update — only update score
+curl -X PUT http://localhost/stats/1 \
+  -H "Content-Type: application/json" \
+  -d '{"score": 2000}'
+
+# Delete a record
+curl -X DELETE http://localhost/stats/1
 ```
 
-##### Railway, Render, or Heroku
+---
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | Full DB connection string | `postgresql+psycopg2://user:pass@host:5432/db` |
+
+For local SQLite development:
+```bash
+DATABASE_URL="sqlite:///./dev.db"
+```
+
+For AWS RDS PostgreSQL (set automatically by Terraform in production):
+```bash
+DATABASE_URL="postgresql+psycopg2://gaming_admin:password@gaming-stats-db.xxx.eu-north-1.rds.amazonaws.com:5432/gaming_stats"
+```
+
+---
+
+## Infrastructure
+
+All AWS infrastructure is managed with Terraform as code. No manual "ClickOps" required.
+
+### AWS Resources
+
+| Resource | Details |
+|----------|---------|
+| VPC | `10.0.0.0/16`, DNS enabled |
+| Public Subnet 1 | `10.0.1.0/24`, eu-north-1a |
+| Public Subnet 2 | `10.0.5.0/24`, eu-north-1b |
+| Private Subnet 1 | `10.0.2.0/24`, eu-north-1b |
+| Private Subnet 2 | `10.0.3.0/24`, eu-north-1c |
+| Internet Gateway | Attached to VPC |
+| ALB | Internet-facing, spans both public subnets |
+| Target Group | Health check on `/health`, port 80 |
+| Launch Template | Ubuntu 22.04, t3.micro, auto-installs Docker |
+| Auto Scaling Group | min=2, max=4, desired=2 |
+| Scaling Policy | TargetTracking CPU 50% |
+| RDS PostgreSQL | db.t3.micro, 20GB, private subnet |
+| S3 Bucket | Remote Terraform state with versioning |
+| DynamoDB Table | State locking |
+
+### Security Groups
+
+```
+Internet → alb_sg (port 80) → app_sg (port 80 from ALB only) → db_sg (port 5432 from app_sg only)
+```
+
+- `alb_sg` — accepts HTTP from internet
+- `app_sg` — accepts HTTP only from ALB, SSH from anywhere
+- `db_sg` — accepts PostgreSQL only from app_sg (database never exposed to internet)
+
+### Deploy from scratch
+
+**Prerequisites:** AWS CLI configured, Terraform installed
 
 ```bash
-# 1. Connect your GitHub repo to the platform
-# 2. Set environment variables in dashboard:
-DATABASE_URL=mysql+pymysql://user:pass@host:port/db
-API_HOST=0.0.0.0
-API_PORT=8000
+# Step 1 — create S3 remote state backend (one time only)
+cd terraform-backend
+terraform init
+terraform apply
+# note the bucket_name from output
 
-# 3. Deploy using Dockerfile.fast for faster builds
+# Step 2 — set your DB password
+cd ../terraform
+cp terraform.tfvars.example terraform.tfvars
+nano terraform.tfvars  # set db_password
+
+# Step 3 — deploy everything
+terraform init
+terraform plan
+terraform apply
+# output will show: alb_dns_name = "gaming-stats-alb-xxx.eu-north-1.elb.amazonaws.com"
 ```
 
-##### Google Cloud Run
+### Manage infrastructure
 
 ```bash
-# 1. Build and push to GCR
-gcloud builds submit --tag gcr.io/PROJECT-ID/gaming-stats-api
+# See current state
+terraform show
 
-# 2. Deploy
-gcloud run deploy --image gcr.io/PROJECT-ID/gaming-stats-api \
-  --platform managed \
-  --port 8000 \
-  --set-env-vars DATABASE_URL=your_db_url
+# Stop EC2 instances (save costs, keep infrastructure)
+aws ec2 stop-instances --instance-ids <id> --region eu-north-1
+aws rds stop-db-instance --db-instance-identifier gaming-stats-db --region eu-north-1
+
+# Destroy everything
+terraform destroy
 ```
 
-### Environment Variables
+> ⚠️ Never commit `terraform.tfvars` — it contains your DB password. It is in `.gitignore`.
 
-Copy `.env.example` to `.env` and customize:
-
-```bash
-cp .env.example .env
-```
-
-**Required Variables:**
-- `DATABASE_URL`: MySQL connection string
-- `MYSQL_ROOT_PASSWORD`: MySQL root password
-- `MYSQL_DATABASE`: Database name
-- `MYSQL_USER`: MySQL user
-- `MYSQL_PASSWORD`: MySQL password
-
-**Optional Variables:**
-- `API_HOST`: API bind address (default: 0.0.0.0)
-- `API_PORT`: API port (default: 8000)
-
-### Database Options
-
-**Production MySQL:**
-- Use managed MySQL (AWS RDS, Google Cloud SQL, PlanetScale)
-- Set `DATABASE_URL` to your cloud database URL
-
-**Development SQLite:**
-- No setup required
-- App automatically uses SQLite if no `DATABASE_URL` set
-- Data stored in `gaming_stats.db`
-
-### Troubleshooting
-
-**Port already in use:**
-```bash
-# Change port in docker-compose.yml or .env
-# Or stop conflicting service
-sudo lsof -i :8000
-sudo kill -9 <PID>
-```
-
-**Database connection issues:**
-```bash
-# Check MySQL container
-docker-compose logs mysql
-
-# Test connection
-docker-compose exec mysql mysql -u user -p gaming_stats
-```
-
-**Permission denied (Docker):**
-```bash
-sudo usermod -aG docker $USER
-# Logout and login again
-```
-
-**Build cache issues:**
-```bash
-# Clear Docker cache
-docker system prune -a
-docker-compose build --no-cache
-```
-
-### Development Workflow
-
-```bash
-# Start development environment
-docker-compose up -d
-
-# Make code changes
-# App auto-reloads due to volume mounting
-
-# Run tests
-docker-compose exec app pytest
-
-# View database
-docker-compose exec mysql mysql -u user -p gaming_stats
-
-# Stop everything
-docker-compose down
-```
-
-### Production Checklist
-
-- [ ] Set strong database passwords
-- [ ] Use environment variables, not hardcoded values
-- [ ] Configure proper firewall rules
-- [ ] Set up SSL/TLS certificates
-- [ ] Configure logging and monitoring
-- [ ] Set up backups for database
-- [ ] Use production-grade database (not SQLite)
-
-### Using Docker
-
-#### Docker Optimization Features
-
-The Dockerfile is optimized for production use with the following features:
-
-- **Multi-stage build**: Separates build and runtime stages to reduce final image size
-- **Minimal base image**: Uses `python:3.11-slim` for a lightweight runtime environment
-- **Dependency optimization**: Installs Python packages in a separate build stage with pinned versions
-- **Security hardening**: Sets appropriate environment variables to prevent bytecode writing and enable unbuffered output
-- **Health checks**: Built-in container health monitoring using netcat
-- **Entrypoint script**: Uses a dedicated entrypoint script for proper service startup and database dependency waiting
-- **Layer caching**: Optimized layer ordering for better Docker build cache utilization
-- **Build cache mounts**: Uses Docker build cache mounts for apt and pip to dramatically reduce build times
-- **Fast build variant**: `Dockerfile.fast` provides 80% faster builds (~45 seconds vs ~3.5 minutes) by optimizing dependency installation order
-
-#### Prerequisites
-- Docker installed
-- Docker Compose installed
-
-#### Quick Start with Docker Compose
-
-The easiest way to run the entire application stack (API + MySQL) is with Docker Compose:
-
-```bash
-docker-compose up -d
-```
-
-This will:
-- Build the Docker image
-- Start MySQL database
-- Start the FastAPI application
-- Expose the API at `http://localhost:8000`
-
-#### View Logs
-```bash
-docker-compose logs -f app
-docker-compose logs -f mysql
-```
-
-#### Stop Services
-```bash
-docker-compose down
-```
-
-#### Build Performance
-
-Two Dockerfile variants are available for different use cases:
-
-- **Standard build** (`Dockerfile`): ~2m 21s - Balanced approach with cache mounts
-- **Fast build** (`Dockerfile.fast`): ~45s - 80% faster by optimizing layer caching
-
-To use the fast build:
-```bash
-docker build -f Dockerfile.fast -t gaming-stats-api:fast .
-```
-
-Both variants produce identical runtime images with the same functionality.
-
-#### Run Container Manually
-
-```bash
-docker run -p 8000:8000 \
-  -e DATABASE_URL="mysql+pymysql://user:password@host:3306/gaming_stats" \
-  gaming-stats-api:latest
-```
-
-#### Environment Variables
-
-Copy `.env.example` to `.env` and customize values as needed:
-```bash
-cp .env.example .env
-```
-
-#### Docker Hub
-
-**Pull from Docker Hub:**
-```bash
-docker pull abrahamyan001/gaming-stats-api:latest
-docker run -p 8000:8000 \
-  -e DATABASE_URL="mysql+pymysql://user:password@host:3306/gaming_stats" \
-  abrahamyan001/gaming-stats-api:latest
-```
-
-**Build and Push to Docker Hub:**
-```bash
-# Build the image
-docker build -t abrahamyan001/gaming-stats-api:latest .
-
-# Login to Docker Hub
-docker login --username abrahamyan001
-
-# Push the image
-docker push abrahamyan001/gaming-stats-api:latest
-```
-
-**View on Docker Hub:**
-https://hub.docker.com/r/abrahamyan001/gaming-stats-api
-
-## Dependencies
-
-### Core Dependencies
-- **FastAPI** - Modern web framework for building APIs
-- **Uvicorn** - ASGI web server
-- **SQLAlchemy** - SQL toolkit and ORM
-- **Pydantic** - Data validation using Python type annotations
-- **PyMySQL** - Pure Python MySQL client
-- **cryptography** - Required for MySQL 8.0 authentication with caching_sha2_password
-
-### Development Dependencies
-- **pytest** - Testing framework
-- **httpx** - HTTP client for testing
-
-### Optional
-- **Docker** - For containerization
-- **Docker Compose** - For orchestrating multiple containers
-
-See `requirements.txt` for complete list with versions.
-
-## API Endpoints
-
-- `GET /` - Welcome message
-- `GET /health` - Health check
-- `GET /stats` - Get all gaming statistics
-- `GET /stats/{id}` - Get specific stats by ID
-- `POST /stats` - Create new gaming stats
-- `GET /stats/player/{player_id}` - Get stats by player
-- `GET /stats/game/{game_name}` - Get stats by game
+---
 
 ## Testing
 
-Run tests with:
-```bash
-pytest
-```
+Tests use an in-memory SQLite database — no setup needed, no files left behind.
 
-Tests use SQLite database for isolation.
-   ```bash
-   pip install -e .
-   ```
-
-## Running the API
-
-Start the development server:
 ```bash
 source venv/bin/activate
-uvicorn app.main:app --reload
+pytest tests/ -v
 ```
 
-The API will be available at `http://localhost:8000`
+Tests cover: create, read, update, delete, filter by player, filter by game, 404 handling.
 
-## API Endpoints
+---
 
-- `GET /` - Welcome message
-- `GET /stats` - Get all gaming statistics
-- `GET /stats/{id}` - Get specific stats by ID
-- `POST /stats` - Create new stats entry
-- `GET /stats/player/{player_id}` - Get stats for a player
-- `GET /stats/game/{game_name}` - Get stats for a game
+## Ansible
 
-## Documentation
+Ansible checks container health without SSH — uses `ansible_connection=docker` to connect natively.
 
-Interactive API documentation available at `http://localhost:8000/docs`
+```bash
+sudo apt install -y ansible
+
+chmod +x ansible-ping.sh
+sudo ./ansible-ping.sh
+```
+
+Expected output:
+```
+>>> [1/3] Pinging backend (FastAPI)...
+gaming_stats_api | SUCCESS => { "ping": "pong" }
+
+>>> [2/3] Pinging database via raw...
+mysqld is alive — pong
+
+>>> [3/3] Pinging proxy (Nginx) via raw...
+nginx: configuration file test is successful — pong
+```
+
+| Container | Ansible module | Reason |
+|-----------|---------------|--------|
+| `gaming_stats_api` | `ping` + `shell` | Has Python 3.11 |
+| `gaming_stats_db` | `raw` | Alpine — no Python |
+| `gaming_stats_nginx` | `raw` | Alpine — no Python |
+
+---
+
+## Troubleshooting
+
+**Port already in use (local):**
+```bash
+fuser -k 8000/tcp
+fuser -k 9000/tcp
+```
+
+**Docker permission denied:**
+```bash
+sudo usermod -aG docker $USER
+# log out and back in
+```
+
+**Terraform state locked:**
+```bash
+terraform force-unlock <lock-id>
+# or manually:
+aws dynamodb delete-item \
+  --table-name gaming-stats-terraform-lock \
+  --key '{"LockID": {"S": "gaming-stats-tfstate-xxx/terraform/state"}}' \
+  --region eu-north-1
+```
+
+**ALB returning 502:**
+```bash
+# Check if ASG instances are healthy
+aws elbv2 describe-target-health \
+  --target-group-arn <arn> \
+  --region eu-north-1
+
+# SSH into an instance and check logs
+ssh -i ~/gaming-stats-new.pem ubuntu@<ec2-ip>
+sudo docker logs gaming_stats_api
+```
+
+**RDS connection refused:**
+- RDS is in a private subnet — only reachable from EC2 inside the VPC
+- Connect via EC2 as a jump host, never directly from your machine
