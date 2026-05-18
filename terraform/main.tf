@@ -1,4 +1,3 @@
-# --- Конфигурация Terraform и Backend ---
 terraform {
   required_providers {
     aws = {
@@ -20,7 +19,9 @@ provider "aws" {
   region = "eu-north-1"
 }
 
-# --- Переменные (их можно также вынести в variables.tf) ---
+# ─────────────────────────────────────────
+# VARIABLES
+# ─────────────────────────────────────────
 variable "key_name" {
   type    = string
   default = "gaming-stats-new"
@@ -41,45 +42,35 @@ variable "db_name" {
   default = "gaming_stats"
 }
 
-# --- Вызовы модулей ---
-
+# ─────────────────────────────────────────
+# MODULES
+# ─────────────────────────────────────────
 module "networking" {
   source               = "./modules/networking"
   vpc_cidr             = "10.0.0.0/16"
   public_subnet_cidrs  = ["10.0.1.0/24", "10.0.5.0/24"]
   private_subnet_cidrs = ["10.0.2.0/24", "10.0.3.0/24"]
   environment          = "gaming-stats"
-  availability_zones = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
+  availability_zones   = ["eu-north-1a", "eu-north-1b", "eu-north-1c"]
 }
 
 module "compute" {
-  source            = "./modules/compute"
-  vpc_id            = module.networking.vpc_id
-  public_subnet_ids = module.networking.public_subnet_ids
-  environment       = "gaming-stats"
-  key_name          = var.key_name
-  db_username       = var.db_username
-  db_password       = var.db_password
-  db_endpoint       = aws_db_instance.main.endpoint
-  db_name           = var.db_name
-}
-output "alb_dns_name" {
-  value = module.compute.alb_dns_name
+  source               = "./modules/compute"
+  vpc_id               = module.networking.vpc_id
+  public_subnet_ids    = module.networking.public_subnet_ids
+  environment          = "gaming-stats"
+  key_name             = var.key_name
+  db_endpoint          = aws_db_instance.main.endpoint
+  db_name              = var.db_name
+
+  # Secrets Manager integration
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  secret_arn           = aws_secretsmanager_secret.db_credentials.arn
 }
 
-output "app_url" {
-  value = "http://${module.compute.alb_dns_name}"
-}
-
-output "rds_endpoint" {
-  value = aws_db_instance.main.endpoint
-}
-
-output "vpc_id" {
-  value = module.networking.vpc_id
-}
-# --- RDS (остается в корне по условию задачи) ---
-
+# ─────────────────────────────────────────
+# RDS (stays in root per task requirements)
+# ─────────────────────────────────────────
 resource "aws_security_group" "db_sg" {
   name        = "gaming-stats-db-sg"
   description = "Allow PostgreSQL only from app_sg"
@@ -125,104 +116,26 @@ resource "aws_db_instance" "main" {
   tags                   = { Name = "gaming-stats-rds", Project = "gaming-stats-api" }
 }
 
-# --- Блоки миграции (moved), чтобы не было destroy ---
-
-moved {
-  from = aws_vpc.main
-  to   = module.networking.aws_vpc.main
+# ─────────────────────────────────────────
+# OUTPUTS
+# ─────────────────────────────────────────
+output "alb_dns_name" {
+  value = module.compute.alb_dns_name
 }
 
-moved {
-  from = aws_internet_gateway.igw
-  to   = module.networking.aws_internet_gateway.igw
+output "app_url" {
+  value = "http://${module.compute.alb_dns_name}"
 }
 
-moved {
-  from = aws_route_table.public
-  to   = module.networking.aws_route_table.public
+output "rds_endpoint" {
+  value = aws_db_instance.main.endpoint
 }
 
-moved {
-  from = aws_route_table.private
-  to   = module.networking.aws_route_table.private
+output "vpc_id" {
+  value = module.networking.vpc_id
 }
 
-moved {
-  from = aws_subnet.public_1
-  to   = module.networking.aws_subnet.public[0]
-}
-
-moved {
-  from = aws_subnet.public_2
-  to   = module.networking.aws_subnet.public[1]
-}
-
-moved {
-  from = aws_subnet.private_1
-  to   = module.networking.aws_subnet.private[0]
-}
-
-moved {
-  from = aws_subnet.private_2
-  to   = module.networking.aws_subnet.private[1]
-}
-
-moved {
-  from = aws_route_table_association.public_1
-  to   = module.networking.aws_route_table_association.public[0]
-}
-
-moved {
-  from = aws_route_table_association.public_2
-  to   = module.networking.aws_route_table_association.public[1]
-}
-
-moved {
-  from = aws_route_table_association.private_1
-  to   = module.networking.aws_route_table_association.private[0]
-}
-
-moved {
-  from = aws_route_table_association.private_2
-  to   = module.networking.aws_route_table_association.private[1]
-}
-
-moved {
-  from = aws_security_group.alb_sg
-  to   = module.compute.aws_security_group.alb_sg
-}
-
-moved {
-  from = aws_security_group.app_sg
-  to   = module.compute.aws_security_group.app_sg
-}
-
-moved {
-  from = aws_lb.main
-  to   = module.compute.aws_lb.main
-}
-
-moved {
-  from = aws_lb_target_group.main
-  to   = module.compute.aws_lb_target_group.main
-}
-
-moved {
-  from = aws_lb_listener.main
-  to   = module.compute.aws_lb_listener.main
-}
-
-moved {
-  from = aws_launch_template.app
-  to   = module.compute.aws_launch_template.app
-}
-
-moved {
-  from = aws_autoscaling_group.main
-  to   = module.compute.aws_autoscaling_group.main
-}
-
-moved {
-  from = aws_autoscaling_policy.cpu
-  to   = module.compute.aws_autoscaling_policy.cpu
+output "secret_arn" {
+  description = "ARN of the DB credentials secret"
+  value       = aws_secretsmanager_secret.db_credentials.arn
 }
