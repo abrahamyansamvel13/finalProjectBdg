@@ -26,7 +26,23 @@ spec:
     spec:
       containers:
         - name: genesis
-          image: nginx:1.26
-
+          image: nginx:latest
           ports:
             - containerPort: 80
+
+          envFrom:
+            - configMapRef:
+                name: genesis-config
+
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: genesis-db-creds
+                  key: DB_PASSWORD
+
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: genesis-db-creds
+                  key: DB_USER
