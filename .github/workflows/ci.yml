@@ -1,0 +1,35 @@
+name: CI Pipeline - Project Genesis
+
+# Trigger the pipeline on every push to your main or feature branches
+on:
+  push:
+    branches: [ "main", "homework29" ]
+
+jobs:
+  build-and-push:
+    # This tells GitHub to run the job on your own computer (Self-Hosted Runner)
+    runs-on: self-hosted
+
+    steps:
+    # Step 1: Download your latest code onto the runner machine
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # Step 2: Log into Docker Hub securely using your secrets
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets::DOCKERHUB_USERNAME }}
+        password: ${{ secrets::DOCKERHUB_TOKEN }}
+
+    # Step 3: Build the Docker image and push it to Docker Hub
+    - name: Build and Push Docker Image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        # Replace 'your-dockerhub-username' with your actual username below
+        tags: |
+          your-dockerhub-username/genesis-app:latest
+          your-dockerhub-username/genesis-app:${{ github.sha }}
