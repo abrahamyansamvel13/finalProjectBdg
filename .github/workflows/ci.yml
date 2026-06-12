@@ -1,3 +1,4 @@
+
 name: Genesis CI/CD
 
 on:
@@ -76,4 +77,4 @@ jobs:
             --set image.tag=${{ needs.build.outputs.tag }}
 
       - name: Verify Kubernetes Deployment Rollout
-        run: kubectl rollout status deploy/genesis
+        run: kubectl rollout status deploy/genesis-deployment
