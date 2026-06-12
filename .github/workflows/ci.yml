@@ -2,23 +2,79 @@ name: Genesis CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [ "main", "homework29", "hw30" ]
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
-  build-and-push:
+  # =================================================================
+  # PHASE 2: THE TEST JOB (with Python Matrix)
+  # =================================================================
+  test:
     runs-on: self-hosted
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
     steps:
-      - name: Checkout repository code
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # If you don't have tests, pytest will check your current test suite or pass 
+      - name: Run test suite
+        run: pytest -q
+
+  # =================================================================
+  # PHASE 3: THE BUILD JOB (Depends on test passing, passes tag output)
+  # =================================================================
+  build:
+    needs: test
+    runs-on: self-hosted
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - name: Check out repository code
         uses: actions/checkout@v4
 
       - name: Login to DockerHub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/genesis:${{ github.sha }} .
+      - name: Generate short Git SHA tag
+        id: meta
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
-      - name: Push Docker image
+      # Builds and pushes using your safe repository secrets
+      - name: Build & push Docker image
         run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/genesis:${{ github.sha }}
-          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/genesis:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/genesis:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/genesis:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/genesis:${{ steps.meta.outputs.tag }} .
+          docker push  ${{ secrets.DOCKERHUB_USERNAME }}/genesis:${{ steps.meta.outputs.tag }}
+
+  # =================================================================
+  # PHASE 4: THE DEPLOY JOB (Deploys to Minikube via Helm)
+  # =================================================================
+  deploy:
+    needs: build
+    runs-on: self-hosted
+    environment: staging
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      # Upgrades your Helm deployment using the tag passed directly from the build stage
+      - name: Deploy to Minikube via Helm
+        run: |
+          helm upgrade --install genesis ./genesis-chart \
+            --set image.repository=${{ secrets.DOCKERHUB_USERNAME }}/genesis \
+            --set image.tag=${{ needs.build.outputs.tag }}
+
+      - name: Verify Kubernetes Deployment Rollout
+        run: kubectl rollout status deploy/genesis
