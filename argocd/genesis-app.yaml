@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: genesis
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/abrahamyansamvel13/finalProjectBdg.git
+    targetRevision: main
+    path: genesis-chart
+    helm:
+      values: |
+        replicaCount: 4
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: genesis
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
