@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: nginx
-  tag: "71978fe7448a277a769bbed628e9e8d072033b03"
+  repository: abrahamyansamvel13/genesis
+  tag: "0cf23035e433ce272695c668eb380afb8738f68d"
   pullPolicy: IfNotPresent
 
 service:
