@@ -14,10 +14,4 @@ spec:
         replicaCount: 4
   destination:
     server: https://kubernetes.default.svc
-    namespace: genesis
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+    namespace: default
