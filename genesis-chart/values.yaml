@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abrahamyan001/genesis
-  tag: "ba99ab3"  # Leave whatever string the bot put here!
+  tag: "0cf23035e433ce272695c668eb380afb8738f68d"  # Leave whatever string the bot put here!
   pullPolicy: IfNotPresent
 
 service:
