@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: abrahamyansamvel13/genesis
+  repository: abrahamyan001/genesis
   tag: "latest"
   pullPolicy: IfNotPresent
 
