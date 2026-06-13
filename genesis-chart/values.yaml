@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abrahamyansamvel13/genesis
-  tag: "0cf23035e433ce272695c668eb380afb8738f68d"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
