@@ -2,8 +2,9 @@ replicaCount: 2
 
 image:
   repository: abrahamyan001/genesis
-  tag: "71978fe"
+  tag: "latest"
   pullPolicy: IfNotPresent
+
 service:
   type: ClusterIP
   port: 80
