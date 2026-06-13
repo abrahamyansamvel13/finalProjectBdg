@@ -1,0 +1,38 @@
+name: Genesis CI/CD
+
+on:
+  push:
+    branches: [ hw33, main ]
+  pull_request:
+    branches: [ main ]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Force Install Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest requests pymysql sqlalchemy fastapi httpx
+
+      - name: Run Tests
+        run: |
+          python -m pytest
+
+  delivery:
+    needs: test
+    uses: abrahamyansamvel13/ci-templates/.github/workflows/build-scan.yml@v1
+    with:
+      image_tag: ${{ github.sha }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
