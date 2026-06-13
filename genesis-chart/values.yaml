@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: nginx
-  tag: "3535ebd0120145b138eb6828ecd91a19857194e2"
+  repository: abrahamyan001/genesis
+  tag: "ba99ab3"  # Leave whatever string the bot put here!
   pullPolicy: IfNotPresent
 
 service:
