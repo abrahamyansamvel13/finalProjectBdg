@@ -61,20 +61,21 @@ jobs:
   # =================================================================
   # PHASE 4: THE DEPLOY JOB (Deploys to Minikube via Helm)
   # =================================================================
-  deploy:
-    needs: build
-    runs-on: self-hosted
-    environment: staging
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v4
-
-      # Upgrades your Helm deployment using the tag passed directly from the build stage
-      - name: Deploy to Minikube via Helm
-        run: |
-          helm upgrade --install genesis ./genesis-chart \
-            --set image.repository=${{ secrets.DOCKERHUB_USERNAME }}/genesis \
-            --set image.tag=${{ needs.build.outputs.tag }}
-
-      - name: Verify Kubernetes Deployment Rollout
-        run: kubectl rollout status deploy/genesis-deployment
+#  deploy:
+ #   needs: build
+  #  runs-on: self-hosted
+   # environment: staging
+    #steps:
+     # - name: Check out repository code
+      #  uses: actions/checkout@v4
+#
+ #     # Upgrades your Helm deployment using the tag passed directly from the build stage
+  #    - name: Deploy to Minikube via Helm
+   #     run: |
+    #      helm upgrade --install genesis ./genesis-chart \
+     #       --set image.repository=${{ secrets.DOCKERHUB_USERNAME }}/genesis \
+      #      --set image.tag=${{ needs.build.outputs.tag }}
+#
+ #     - name: Verify Kubernetes Deployment Rollout
+  #      run: kubectl rollout status deploy/genesis-deployment
+#
