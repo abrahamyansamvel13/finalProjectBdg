@@ -1,0 +1,17 @@
+# ServiceMonitor for Prometheus Operator to discover our app
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gaming-stats-api
+  namespace: default
+  labels:
+    release: kps  # MUST match the kube-prometheus-stack release name
+    app: gaming-stats-api
+spec:
+  selector:
+    matchLabels:
+      app: gaming-stats-api  # Must match Service labels
+  endpoints:
+    - port: metrics  # Must match the named port in Service
+      interval: 15s
+      path: /metrics
