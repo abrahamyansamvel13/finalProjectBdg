@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abrahamyan001/genesis
-  tag: "f138876108c81a723de378965712444a50852fda"
+  tag: "b99cfb63cbc59c8abf6a7b5cd8db5f4789ad047e"
   pullPolicy: IfNotPresent
 
 service:
